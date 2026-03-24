@@ -1,40 +1,43 @@
-# 1. استخدام صورة PHP مع Apache
+# 1. استخدام نسخة PHP الرسمية مع Apache
 FROM php:8.2-apache
 
-# 2. تثبيت الإضافات اللازمة لعمل البوت (cURL و JSON مدمجة في هذه النسخة)
+# 2. تحديث المستودعات وتثبيت المكتبات الضرورية لنظام تليجرام و cURL
 RUN apt-get update && apt-get install -y \
-    libcurl4-openssl-dev \
-    pkg-config \
-    libssl-dev \
-    && docker-php-ext-install curl
+    libicu-dev \
+    libpq-dev \
+    libzip-dev \
+    unzip \
+    zip \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# 3. تفعيل مود الـ Rewrite في Apache (مهم لروابط الويب)
+# 3. تثبيت ملحقات PHP المطلوبة (cURL مدمج، ونضيف الملحقات الشائعة)
+RUN docker-php-ext-install \
+    intl \
+    mysqli \
+    pdo \
+    pdo_mysql \
+    zip
+
+# 4. تفعيل موديل Apache Rewrite (مهم لمسارات الـ Webhook)
 RUN a2enmod rewrite
 
-# 4. نسخ ملفات المشروع إلى الحاوية
-COPY . /var/www/html/
+# 5. ضبط إعدادات PHP للإنتاج (تحسين الأداء)
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
-# 5. إنشاء المجلدات المطلوبة يدوياً للتأكد من وجودها قبل منح الصلاحيات
-RUN mkdir -p /var/www/html/botmak \
-             /var/www/html/user \
-             /var/www/html/sudo \
-             /var/www/html/wataw \
-             /var/www/html/from_id \
-             /var/www/html/data
+# 6. تحديد مجلد العمل داخل الحاوية
+WORKDIR /var/www/html
 
-# 6. منح الصلاحيات الكاملة للمجلدات (حل مشكلة chmod التي واجهتها)
-RUN chmod -R 777 /var/www/html/botmak \
-                 /var/www/html/user \
-                 /var/www/html/sudo \
-                 /var/www/html/wataw \
-                 /var/www/html/from_id \
-                 /var/www/html/data
+# 7. نسخ الكود المصدري إلى الحاوية
+COPY . /var/www/html
 
-# 7. تغيير مالك الملفات ليكون خادم Apache
-RUN chown -R www-data:www-data /var/www/html
+# 8. ضبط الصلاحيات لمجلد data و cache (ضروري جداً لعمل البوت)
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 775 /var/www/html/data \
+    && chmod -R 775 /var/www/html/cache
 
-# 8. تحديد المنفذ (Railway يستخدم غالباً 8080 أو المتغير $PORT)
+# 9. فتح المنفذ 80 (Apache)
 EXPOSE 80
 
-# 9. أمر التشغيل الافتراضي
+# 10. تشغيل Apache في الواجهة
 CMD ["apache2-foreground"]
