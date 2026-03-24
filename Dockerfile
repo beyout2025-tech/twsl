@@ -31,10 +31,12 @@ WORKDIR /var/www/html
 # 7. نسخ الكود المصدري إلى الحاوية
 COPY . /var/www/html
 
-# 8. ضبط الصلاحيات لمجلد data و cache (ضروري جداً لعمل البوت)
-RUN chown -R www-data:www-data /var/www/html \
+# 8. إنشاء المجلدات أولاً ثم ضبط الصلاحيات
+RUN mkdir -p /var/www/html/data /var/www/html/cache \
+    && chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html/data \
     && chmod -R 775 /var/www/html/cache
+
 
 # 9. فتح المنفذ 80 (Apache)
 EXPOSE 80
